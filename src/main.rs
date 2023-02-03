@@ -9,8 +9,6 @@
 //  当错误有可能发生，且应当由调用者处理时，使用 Result。
 //      也可以用 unwrap，然后使用 expect
 //endregion
-
-
 fn main() {
     // 在标准库当中有个叫 Option<T> 的枚举类型，用于有“不存在”的可能性的情况。
     // 它表现为以下两个“option”中的一个：
@@ -18,8 +16,6 @@ fn main() {
     //      None：找不到相应的元素
     // 这些选项可以通过 match 显式处理，或使用 unwrap 隐式处理。
     // 隐式处理要么返回 Some 内部的元素，要么就 panic。
-
-    println!("Hello, world!");
     //region 18.1.panic
     println!("\n\n=====18.1.panic=====");
     // 它会打印一个错误信息，开始回退 (unwind) 任务，且通常会退出程序
@@ -158,6 +154,8 @@ fn main() {
         food.map(|f| Peeled(f))
             .map(|Peeled(f)| Chopped(f))
             .map(|Chopped(f)| Cooked(f))
+        // 代表的意思就是食物先去皮、然后对去皮的进行切块(chop)、对切块的进行烹饪
+        // 用这种样式来模拟一个烹饪的流程，很好。 2023-02-03 15:43:02
     }
     fn eat(food: Option<Cooked>) {
         match food {
@@ -175,6 +173,95 @@ fn main() {
     eat(cooked_apple);
     eat(cooked_carrot);
     //endregion
+
+    //region 18.2.3.组合算子：and_then
+    println!("\n\n=====18.2.3.组合算子：and_then=====");
+    // map() 以链接调用的方式来简化 match 语句，如果返回类型是 Option<T> 的函数作为 map()
+    // 的参数，会导致出现嵌套形式 Option<Option<T>>。这样多层串联调用就会变得混乱。
+    // 所以有必要引进 and_them()，在某些语言中它叫做 flatmap
+    // and_them() 使用被 Option 包裹的值 来调用其输入函数并返回结果。如果 Option 是 None，
+    // 那么它返回 None。
+    // 在下面的例子中，cookable-v2() 会产生一个 Option<Food>，如果在这里使用 map() 而不是
+    // and_then() 将会得到 Option<Option<Food>> ，这对 eat() 来说是一个无效类型
+    // #![allow(dead_code)]
+    #[derive(Debug)] enum FoodV2 { CordonBleu, Steak, Sushi }
+    #[derive(Debug)] enum Day {Monday, Tuesday, Wednesday}
+    // 我们没有制作寿司所需的原材料(ingredient)
+    fn have_ingredients(food: FoodV2) -> Option<FoodV2> {
+        match food {
+            FoodV2::Sushi => None,
+            _ => Some(food),
+        }
+    }
+    // 我们拥有全部食物的食谱，除了法国的蓝带猪排(Cordon Bleu)
+    fn have_recipe(food: FoodV2) -> Option<FoodV2> {
+        match food {
+            FoodV2::CordonBleu => None,
+            _ => Some(food),
+        }
+    }
+    // 要做一份好菜，我们需要原材料和食谱
+    // 我们可以借助一系列的 match 来表达这个逻辑：
+    fn cookable_v1(food: FoodV2) -> Option<FoodV2> {
+        match have_ingredients(food) {
+            None => None,
+            Some(food) => match have_recipe(food) {
+                None => None,
+                Some(food) => Some(food),
+            }
+        }
+    }
+
+    // 也可以用 and_then() 把上面的逻辑改写得更紧凑
+    fn cookable_v2(food: FoodV2) -> Option<FoodV2> {
+        have_ingredients(food).and_then(have_recipe)
+    }
+    fn eat_v2(food: FoodV2, day: Day) {
+        match cookable_v2(food) {
+            Some(food) => println!("Yay! On {:?} we get to eat {:?}.", day, food),
+            None => println!("Oh no. We don't get to eat on {:?}?", day),
+        }
+    }
+
+    let (cordon_bleu, steak, sushi) = (FoodV2::CordonBleu, FoodV2::Steak, FoodV2::Sushi);
+    eat_v2(cordon_bleu, Day::Monday);
+    eat_v2(steak, Day::Tuesday);
+    eat_v2(sushi, Day::Wednesday);
+    //endregion
+
+    //region 18.3.结果Result
+    println!("\n\n=====18.3.结果Resul=====");
+    // Result 是 Option 类型的更丰富的版本，描述的是可能的错误而不是可能的不存在。
+    // 也就是说，Result<T, E> 可以有两个结果的其中一个：
+    //      Ok<T>   ：找到 T 元素
+    //      Err<E>  ：找到 E 元素，E 表示错误的类型
+    // 按照约定，预期结果是 "OK"，而意外结果就是 “Err”。
+    // Result 有很多类似于 Option 的方法。例如： unwrap() ，它要么举出元素 T，要么
+    // 就 panic。
+    // 而对于事件的处理，Result 和 Option 有很多相同的组合算子
+    // parse() 方法返回 Result 类型，并不总是能把字符串解析成指定的类型，也有可能失败
+    fn multiply(first_number_str: &str, second_number_str: &str) -> i32 {
+        let first_number = first_number_str.parse::<i32>().unwrap();
+        let second_number = second_number_str.parse::<i32>().unwrap();
+        first_number * second_number
+    }
+    let twenty = multiply("10", "2");
+    println!("double is {}", twenty);
+
+    let tt = multiply("t","2");
+    println!("double is {}", tt);
+    // 失败的情况下，parse()产生一个错误，留给 unwrap() 来解包并产生 panic。
+    // 另外，panic 会退出程序，并提供一个让人很不爽的错误信息
+    //endregion
+
+    //region 18.3.1.Result的map
+    println!("\n\n=====18.3.1.Result的map=====");
+
+
+
+
+
+
 
 
 
