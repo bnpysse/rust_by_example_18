@@ -1,3 +1,7 @@
+extern crate core;
+
+use core::num;
+
 //region 18.错误处理
 // 错误处理(error handling)是处理可能发生的失败情况的过程。
 // 在 Rust 中有多种处理方式，总的来说：
@@ -247,8 +251,9 @@ fn main() {
     }
     let twenty = multiply("10", "2");
     println!("double is {}", twenty);
-
-    let tt = multiply("t","2");
+    // 这里如果第一个参数为字母的话，只能是引发 panic，退出程序。不友好，看下面的例子就好多了。
+    // 2023年2月3日21时19分24秒
+    let tt = multiply("9","2");
     println!("double is {}", tt);
     // 失败的情况下，parse()产生一个错误，留给 unwrap() 来解包并产生 panic。
     // 另外，panic 会退出程序，并提供一个让人很不爽的错误信息
@@ -256,10 +261,71 @@ fn main() {
 
     //region 18.3.1.Result的map
     println!("\n\n=====18.3.1.Result的map=====");
+    // 上一节的 multiply 函数的设计不是健壮的 (robust)，一般地，我们希望把错误返回给调用者
+    // 这样它可以决定回应错误的正确方式
+    // 首先，我们需要了解要处理的错误类型是什么。为了确定 Err 的类型，我们可以用 parse() 来
+    // 实验。Rust 已经为 i32 类型使用 FromStr trait 实现了 parse()。结果表明，
+    // 这里的 Err 类型被指定为 ParseIntError。
+    use std::num::ParseIntError;
+    fn multiplay(first_number_str: &str, second_number_str: &str) -> Result<i32, ParseIntError> {
+        match first_number_str.parse::<i32>() {
+            Ok(first_number) => {
+                match second_number_str.parse::<i32>() {
+                    Ok(second_number) => {
+                        Ok(first_number * second_number)
+                    },
+                    Err(e) => Err(e),
+                }
+            },
+            Err(e) => Err(e),
+        }
+    }
 
+    fn print(result: Result<i32, ParseIntError>) {
+        match result {
+            Ok(n) => println!("n is {}", n),
+            Err(e) => println!("Error: {}", e),
+        }
+    }
 
+    let twenty = multiplay("10", "2");
+    print(twenty);
+    let tt = multiplay("t", "2");
+    print(tt);
+    //endregion
 
+    //region 18.3.2.给Result取别名
+    println!("\n\n=====18.3.2.给Result取别名=====");
+    // 当我们要重用某个 Result 类型时，可以创建别名。
+    // 若某个 Result 有可能被重用，可以方便地给它取一个别名。
+    // 在模块层面上创建别名特别有用。同一模块中的错误常常会有相同的 Err 类型，所以单个别名就能简便定义所有相关
+    // 的 Result 。这太有用了，以至于标准库也提供了一个别名： io::Result
+    // use std::num::ParseIntError;  前面已经定义过了！！！ 2023年2月3日23时57分49秒
+    // 为带有错误类型的 'ParseIntError` 的 'Result` 定义一个泛型别名。
+    type AliasedResult<T> = Result<T, ParseIntError>;
+    // 使用上面定义过的别名来表示上一节中的 `Result<i32, ParseIntError>` 类型
+    fn multiplying(first_number_str: &str, second_number_str: &str) -> AliasedResult<i32> {
+        first_number_str.parse::<i32>().and_then(|first_number| {
+            second_number_str.parse::<i32>().map(|second_number| first_number + second_number)
+        })
+    }
 
+    fn print_v1(result: AliasedResult<i32>) {
+        match result {
+            Ok(n) => println!("n is {}", n),
+            Err(e) => println!("Error: {}", e),
+        }
+    }
+
+    print(multiplying("10", "2"));
+    print(multiplying("r", "2"));
+    //endregion
+
+    //region 18.3.3.提前返回
+    println!("\n\n=====18.3.3.提前返回=====");
+    // 在上一个例子中，显式地使用组合算子处理了错误。
+    // 另一种处理错误的方式是使用 match 语句和提前返回(early return)的结合。
+    // 也就是说，如果发生错误，可以停止函数的执行然后返回错误。
 
 
 
