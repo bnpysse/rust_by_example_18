@@ -12,6 +12,14 @@
 
 
 fn main() {
+    // 在标准库当中有个叫 Option<T> 的枚举类型，用于有“不存在”的可能性的情况。
+    // 它表现为以下两个“option”中的一个：
+    //      Some(T) : 找到一个属于 T 类型的元素
+    //      None：找不到相应的元素
+    // 这些选项可以通过 match 显式处理，或使用 unwrap 隐式处理。
+    // 隐式处理要么返回 Some 内部的元素，要么就 panic。
+
+    println!("Hello, world!");
     //region 18.1.panic
     println!("\n\n=====18.1.panic=====");
     // 它会打印一个错误信息，开始回退 (unwind) 任务，且通常会退出程序
